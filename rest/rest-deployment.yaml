@@ -1,0 +1,35 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rest-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rest-server
+  template:
+    metadata:
+      labels:
+        app: rest-server
+    spec:
+      containers:
+        - name: rest-server
+          image: us-central1-docker.pkg.dev/datacenterscalecomputinglab7/demucs-images/demucs-rest:v1
+          ports:
+            - containerPort: 5000
+          env:
+            - name: REDIS_HOST
+              value: redis
+            - name: MINIO_HOST
+              value: minio:9000
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secret-key
