@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: us-central1-docker.pkg.dev/datacenterscalecomputinglab7/demucs-images/demucs-worker:v1
+          image: us-central1-docker.pkg.dev/datacenterscalecomputinglab7/demucs-images/demucs-worker:v5
           env:
             - name: REDIS_HOST
               value: redis

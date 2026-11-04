@@ -35,7 +35,9 @@ logger = logging.getLogger(__name__)
 redis_client = redis.Redis(
     host=REDIS_HOST,
     port=REDIS_PORT,
-    decode_responses=True
+    decode_responses=True,
+    socket_connect_timeout=10,
+    socket_timeout=30
 )
 
 minio_client = Minio(
@@ -45,9 +47,21 @@ minio_client = Minio(
     secure=False
 )
 
+def log_info(message):
+    logger.info(message)
+    try:
+        redis_client.lpush("logging", f"worker.info:{message}")
+    except redis.RedisError:
+        logger.exception("Failed to publish log")
+
+
 
 def process_job(job):
-    """Download, separate, and upload one song."""
+    songhash = job["songhash"]
+    object_name = job["object_name"]
+    model = job.get("model", "htdemucs")
+
+    log_info(f"Processing song {songhash}")
 
     songhash = job["songhash"]
     object_name = job["object_name"]
@@ -63,7 +77,7 @@ def process_job(job):
         output_dir = work_dir / "output"
 
         # 1. Download original MP3
-        logger.info("Downloading original MP3")
+        log_info("Downloading original MP3")
 
         minio_client.fget_object(
             MINIO_BUCKET,
@@ -72,7 +86,7 @@ def process_job(job):
         )
 
         # 2. Run Demucs
-        logger.info("Running Demucs model %s", model)
+        log_info(f"Running Demucs model {model}")
 
         command = [
             "python3",
@@ -110,9 +124,9 @@ def process_job(job):
                 content_type="audio/mpeg"
             )
 
-            logger.info("Uploaded %s.mp3", track)
+            log_info(f"Uploaded {track}.mp3")
 
-    logger.info("Completed song %s", songhash)
+    log_info(f"Completed song {songhash}")
 
     # 4. Optional callback
     callback = job.get("callback")

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: rest-server
-          image: us-central1-docker.pkg.dev/datacenterscalecomputinglab7/demucs-images/demucs-rest:v1
+          image: us-central1-docker.pkg.dev/datacenterscalecomputinglab7/demucs-images/demucs-rest:v4
           ports:
             - containerPort: 5000
           env:

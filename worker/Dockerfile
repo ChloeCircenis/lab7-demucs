@@ -8,7 +8,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir \
-    demucs redis minio requests
+    "numpy==1.26.4" demucs redis minio requests
 
 COPY worker-server.py .
 

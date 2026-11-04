@@ -14,7 +14,9 @@ ZONE = "us-central1-b"
 MACHINE_TYPE = "e2-standard-4"
 REGION = "us-central1"
 REPOSITORY = "demucs-images"
-VERSION = "v2"
+# VERSION = "v5"
+REST_VERSION = "v4"
+WORKER_VERSION = "v5"
 
 ROOT = Path(__file__).resolve().parent
 
@@ -41,7 +43,8 @@ def setup_registry():
     run([
         "gcloud", "services", "enable",
         "cloudbuild.googleapis.com",
-        "artifactregistry.googleapis.com"
+        "artifactregistry.googleapis.com",
+        "container.googleapis.com"
     ])
 
     check = subprocess.run(
@@ -68,20 +71,19 @@ def build_images(project_id):
         f"{project_id}/{REPOSITORY}"
     )
 
-    # Cloud Build expects the default Dockerfile name
-    rest_dockerfile = ROOT / "rest" / "Dockerfile-rest"
-    default_dockerfile = ROOT / "rest" / "Dockerfile"
+    images = [
+        ("demucs-rest", "rest", REST_VERSION),
+        ("demucs-worker", "worker", WORKER_VERSION)
+    ]
 
-    if not default_dockerfile.exists():
-        default_dockerfile.write_bytes(
-            rest_dockerfile.read_bytes()
-        )
+    for service, directory, version in images:
+        image = f"{registry}/{service}:{version}"
 
-    for service, directory in [
-        ("demucs-rest", "rest"),
-        ("demucs-worker", "worker")
-    ]:
-        image = f"{registry}/{service}:{VERSION}"
+        # REST uses a custom Dockerfile name
+        if directory == "rest":
+            dockerfile = ROOT / "rest" / "Dockerfile-rest"
+            default = ROOT / "rest" / "Dockerfile"
+            default.write_bytes(dockerfile.read_bytes())
 
         run([
             "gcloud", "builds", "submit",
@@ -91,9 +93,25 @@ def build_images(project_id):
 
         print(f"Built image: {image}")
 
+
 def deploy_application():
-    """Deploy Kubernetes resources using existing script."""
+    """Deploy resources and verify Kubernetes rollouts."""
     run(["sh", "deploy-all.sh"])
+
+    for deployment in [
+        "redis",
+        "minio",
+        "rest-server",
+        "demucs-worker",
+        "logs"
+    ]:
+        run([
+            "kubectl", "rollout", "status",
+            f"deployment/{deployment}",
+            "--timeout=300s"
+        ])
+
+    print("All Kubernetes deployments are ready.")
 
 
 def create_cluster():
@@ -144,12 +162,6 @@ def create_minio_secret():
         f"--from-literal=secret-key={password}"
     ])
 
-
-def deploy_application():
-    """Deploy application using existing shell script."""
-    run(["sh", "deploy-all.sh"])
-
-
 def delete_cluster():
     """Delete the GKE cluster to stop compute charges."""
     run([
@@ -177,6 +189,7 @@ def main():
         build_images(project_id)
 
     if args.deploy:
+        setup_registry()
         create_cluster()
         create_minio_secret()
         deploy_application()

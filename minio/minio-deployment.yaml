@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,31 +13,28 @@ spec:
       labels:
         app: minio
     spec:
+      securityContext:
+        fsGroup: 10001
       containers:
-        - name: minio
-          image: minio/minio:RELEASE.2025-02-07T23-21-09Z
+        - name: rustfs
+          image: rustfs/rustfs:latest
           args:
-            - server
             - /data
+          ports:
+            - containerPort: 9000
           env:
-            - name: MINIO_ROOT_USER
+            - name: RUSTFS_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: access-key
-            - name: MINIO_ROOT_PASSWORD
+            - name: RUSTFS_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: secret-key
-          ports:
-            - containerPort: 9000
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "250m"
-            limits:
-              memory: "1Gi"
+            - name: RUSTFS_ADDRESS
+              value: ":9000"
           volumeMounts:
             - name: storage
               mountPath: /data

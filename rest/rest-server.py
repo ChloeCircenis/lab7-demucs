@@ -1,6 +1,6 @@
 # accepts MP3 requests
 # communicate with Redis
-# retrieve processed audio from MinIO
+# retrieve processed audio from RustFS
 
 import os
 import io
@@ -41,6 +41,12 @@ minio_client = Minio(
 
 TRACKS = {"bass.mp3", "drums.mp3", "vocals.mp3", "other.mp3"}
 
+def log_info(message):
+    app.logger.info(message)
+    try:
+        redis_client.lpush("logging", f"rest.info:{message}")
+    except redis.RedisError:
+        app.logger.exception("Failed to publish log")
 
 def ensure_bucket():
     if not minio_client.bucket_exists(MINIO_BUCKET):
@@ -106,6 +112,8 @@ def separate():
     except Exception:
         app.logger.exception("Failed to enqueue song")
         return jsonify({"error": "Storage or queue unavailable"}), 503
+
+    log_info(f"Enqueued song {songhash}")
 
     return jsonify({
         "hash": songhash,

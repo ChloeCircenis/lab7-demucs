@@ -20,6 +20,6 @@ kubectl apply -f logs/logs-deployment.yaml
 kubectl apply -f worker/worker-deployment.yaml
 
 # Expose REST API
-# kubectl apply -f rest/rest-ingress.yaml
+kubectl apply -f rest/rest-ingress.yaml
 
 echo "Kubernetes resources submitted successfully."
